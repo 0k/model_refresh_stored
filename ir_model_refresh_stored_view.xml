@@ -1,0 +1,16 @@
+<openerp>
+  <data>
+    <record id="act_model_refresh_stored_view" model="ir.ui.view">
+      <field name="name">ir.model.inherit</field>
+      <field name="model">ir.model</field>
+      <field name="inherit_id" ref="base.view_model_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="/form/sheet" position="before" >
+          <header>
+            <button name="refresh_stored" type="object" string="Refresh Values" groups="base.group_user"/>
+          </header>
+        </xpath>
+      </field>
+    </record>
+  </data>
+</openerp>
