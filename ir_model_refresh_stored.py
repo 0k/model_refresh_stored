@@ -53,7 +53,7 @@ def _update_store_by_ids(self, cr, f, k, ids_lst):
             if type(val) == tuple:
                 val = val[0]
             if val is not False:
-                report += "%s:%s storing computed values of fields.function '%s'\n" % (self._name, key, k)
+                report += "%s:%s forced refresh of stored value for function '%s'\n" % (self._name, key, k)
                 cr.execute(update_query, (ss[1](val), key))
     return report
 
