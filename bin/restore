@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""Re-calculate stored values for given objects.
+
+Usage:
+    restore (-h | --help)
+    restore MODEL [--after DATE | --id IDS] [--limit MAX] [--domain DOMAIN]
+
+Options:
+    -h, --help           Show this screen
+    --after DATE         Filters model by created or write date after given DATE
+    --id IDS             Filters model to given ids
+    --domain DOMAIN      Ignore existing domain and use DOMAIN instead
+
+"""
+
+try:
+    from ooop import OOOP, List
+except ImportError:
+    print "You need to install OOOP to run this. You could try:"
+    print ""
+    print "    pip install ooop"
+    print ""
+    exit(1)
+
+try:
+    import docopt
+except ImportError:
+    print "You need to install docopt to run this. You could try:"
+    print ""
+    print "    pip install docopt"
+    print ""
+    exit(1)
+
+import os
+
+
+Null = object()
+
+def get_from_env(label, default=Null):
+    if label not in os.environ:
+        if default is Null:
+            print "Error: you must set $%s environment variable." % label
+            exit(1)
+        else:
+            return default
+    return os.environ[label]
+
+arguments = docopt.docopt(__doc__, version='0.0.1')
+if arguments["--domain"]:
+    domain = [eval(arguments["--domain"])]
+else:
+    domain  = []
+
+if arguments["--id"]:
+    try:
+        ids = [int(s)
+               for s in arguments["--id"].split(",")
+               if s]
+    except ValueError:
+        print "Error: provided id %r is not a number or a list of numbers." % arguments["--id"]
+        exit(1)
+    domain.append([('id', 'in', ids)])
+
+if arguments["--after"]:
+    domain.append(['|', ('create_date', '>', arguments["--after"]), ('write_date', '>', arguments["--after"])])
+
+model = arguments["MODEL"]
+
+o = OOOP(user=get_from_env("OE_USER"),
+         pwd=get_from_env("OE_PASSWORD"),
+         dbname=get_from_env("OE_DB"),
+         lang=get_from_env("OE_LANG", "fr_FR"))
+
+real_domain = []
+for dom in domain:
+    real_domain.extend(dom)
+
+context = {}
+
+import xmlrpclib
+
+
+ids = o.search(model, real_domain)
+
+if len(ids) == 0:
+    print "No ids matched current domain: %r" % real_domain
+    exit(1)
+
+try:
+    print o.objectsock.execute(o.dbname, o.uid, o.pwd, model, "update_store", ids, context),
+except xmlrpclib.Fault, e:
+    print e.faultString.split("\n")[-2].replace('\\n', '\n')
+    exit(1)
