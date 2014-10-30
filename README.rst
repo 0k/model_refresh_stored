@@ -5,7 +5,7 @@ Refresh Stored Values
 Provides a simple button at the bottom of the form view of model objects which
 refresh all stored values for this model.
 
-This module is really small and can be used as a good way to learn OpenERP
+This module is really small and can be used as a good way to learn OpenERP/Odoo
 module creation.
 
 Besides, it could be handy to have this in hand while developping other modules.
@@ -24,7 +24,7 @@ Requirements
 Was tested successfully with:
 
  - OpenERP 7.0
- - OpenERP 8.0
+ - OpenERP/Odoo 8.0
 
 
 Installation
@@ -36,7 +36,7 @@ Please make sure to launch:
 
 prior to installing this module to generate the version and the changelog.
 
-Then you can install it as any other OpenERP module.
+Then you can install it as any other OpenERP/Odoo module.
 
 
 Usage
@@ -70,9 +70,6 @@ You can::
 
 To get a full help options. Here's an example of usage::
 
-    $ export OE_USER=admin
-    $ export OE_PASSWORD=dev
-    $ export OE_DB=test_restore
     $ OE_USER=admin OE_PASSWORD=dev OE_DB=test_restore bin/restore project.task --domain "[('name', '=', 't1')]"
     project.task:1 forced refresh of stored value for function 'active'
     project.task:1 forced refresh of stored value for function 'effective_hours'
