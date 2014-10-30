@@ -4,9 +4,9 @@
 """
 
 
-from osv import osv, fields
 from openerp import SUPERUSER_ID
-
+from openerp.osv import fields, osv
+from openerp.tools.translate import _
 
 class AddModelRefreshButton(osv.osv):
     """Adds a button in model view to refresh stored values of instances

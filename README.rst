@@ -24,6 +24,7 @@ Requirements
 Was tested successfully with:
 
  - OpenERP 7.0
+ - OpenERP 8.0
 
 
 Installation
