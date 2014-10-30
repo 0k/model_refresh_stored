@@ -5,8 +5,7 @@
     "description" : """Provides a simple button at the bottom of the form view of model objects which
 refresh all stored values for this model.
 
-Funded by Tuxservices.
-
+Please contact Nicolas JEUDY from Tuxservices <njeudy@tuxservices.com> for any help or question about this module.
 """,
     "version": "%%short-version%%",
     "depends": ["base"],
