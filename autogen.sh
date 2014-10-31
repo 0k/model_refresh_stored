@@ -1,176 +1,220 @@
-#!/bin/bash
-## Begin autogen.sh
+#!/bin/sh
 
-
-## List of files that will have %%tags%% replaced
-UPDATE_FILES="__openerp__.py"
-
+##
+## You can download latest version of this file:
+##  $ wget https://gist.github.com/vaab/9118087/raw -O autogen.sh
+##  $ chmod +x autogen.sh
+##
 
 ##
 ## Functions
 ##
 
 exname="$(basename "$0")"
+long_tag="[0-9]+\.[0-9]+(\.[0-9]+)?-[0-9]+-[0-9a-f]+"
+short_tag="[0-9]+\.[0-9]+(\.[0-9]+)?"
+get_short_tag="s/^($short_tag).*\$/\1/g"
 
-function get_path() {
-    local type
-
-    type="$(type -t "$1")"
-    case $type in
-        ("file")
-            type -p "$1"
-            return 0
-            ;;
-        ("function" | "builtin" )
-            echo "$1"
-            return 0
-            ;;
-    esac
+get_path() { (
+    IFS=:
+    for d in $PATH; do
+        filename="$d/$1"
+        if test -x "$filename"; then echo "$d/$1"; return 0; fi
+    done
     return 1
-}
+) }
 
-function print_exit() {
-    echo $@
+print_exit() {
+    echo "$@"
     exit 1
 }
 
-function print_syntax_error() {
-    [ "$*" ] || print_syntax_error "$FUNCNAME: no arguments"
+print_syntax_error() {
+    [ "$*" ] ||	print_syntax_error "$FUNCNAME: no arguments"
     print_exit "${ERROR}script error:${NORMAL} $@" >&2
 }
 
-function print_syntax_warning() {
+print_syntax_warning() {
     [ "$*" ] || print_syntax_error "$FUNCNAME: no arguments."
     [ "$exname" ] || print_syntax_error "$FUNCNAME: 'exname' var is null or not defined."
     echo "$exname: ${WARNING}script warning:${NORMAL} $@" >&2
 }
 
-function print_error() {
+print_error() {
     [ "$*" ] || print_syntax_warning "$FUNCNAME: no arguments."
     [ "$exname" ] || print_exit "$FUNCNAME: 'exname' var is null or not defined." >&2
     print_exit "$exname: ${ERROR}error:${NORMAL} $@" >&2
 }
 
-function depends() {
+depends() {
 
     local i tr path
 
-    tr=$(get_path "tr")
-    test "$tr" ||
-        print_error "dependency check : couldn't find 'tr' command."
+    tr=$(get_path "tr") ||
+	print_error "dependency check : couldn't find 'tr' command."
 
     for i in $@ ; do
 
       if ! path=$(get_path $i); then
-          new_name=$(echo $i | "$tr" '_' '-')
-          if [ "$new_name" != "$i" ]; then
-             depends "$new_name"
-          else
-             print_error "dependency check : couldn't find '$i' command."
-          fi
+	  new_name=$(echo $i | "$tr" '_' '-')
+	  if [ "$new_name" != "$i" ]; then
+	     depends "$new_name"
+	  else
+	     print_error "dependency check : couldn't find '$i' command."
+	  fi
       else
-          if ! test -z "$path" ; then
-              export "$(echo $i | "$tr" '-' '_')"=$path
-          fi
+	  if ! test -z "$path" ; then
+	      export "$(echo $i | "$tr" '-' '_')"=$path
+	  fi
       fi
 
     done
 }
 
-function die() {
+die() {
     [ "$*" ] || print_syntax_warning "$FUNCNAME: no arguments."
     [ "$exname" ] || print_exit "$FUNCNAME: 'exname' var is null or not defined." >&2
-    print_exit "$exname: ${ERROR}error:${NORMAL} $@" >&2
+    print_exit "$exname: ${ERROR}error:${NORMAL}" "$@" >&2
 }
 
-function matches() {
+matches() {
    echo "$1" | "$grep" -E "^$2\$" >/dev/null 2>&1
 }
 
-##
-## Code
-##
-
-depends git sed grep
-
-if ! "$git" rev-parse HEAD >/dev/null 2>&1; then
-    die "Didn't find a git repository. autogen.sh uses git to create changelog \
-         and version information."
-fi
-
-long_tag="[0-9]+\.[0-9]+(\.[0-9]+)?-[0-9]+-[0-9a-f]+"
-short_tag="[0-9]+\.[0-9]+(\.[0-9]+)?"
-
-get_short_tag="s/^($short_tag).*\$/\1/g"
-
-
-function get_current_git_date_timestamp() {
+get_current_git_date_timestamp() {
     "$git" show -s --pretty=format:%ct
 }
 
 
-function dev_version_tag() {
-    date -d "@$(get_current_git_date_timestamp)" +%Y%m%d%H%M
+dev_version_tag() {
+    compat_date "$(get_current_git_date_timestamp)" "+%Y%m%d%H%M"
 }
 
 
-function get_current_version() {
+get_current_version() {
 
     version=$("$git" describe --tags)
     if matches "$version" "$short_tag"; then
         echo "$version"
     else
-        version=$(echo "$version" | "$sed" -r "$get_short_tag")
+        version=$(echo "$version" | compat_sed "$get_short_tag")
         echo "${version}.1dev_r$(dev_version_tag)"
     fi
 
 }
 
-function set_meta_tags() {
-    local p i short_version patterns year;
+prepare_files() {
 
     version=$(get_current_version)
     short_version=$(echo "$version" | cut -f 1,2,3 -d ".")
 
-    year=$(date -d "@$(get_current_git_date_timestamp)" +%Y)
 
-    patterns="s/%%version%%/$version/g
-s/%%year%%/$year/g
-s/%%short-version%%/${short_version}/g"
-
-    for p in $patterns; do
-        for f in $UPDATE_FILES ChangeLog; do
-            if [ -e "$f" ]; then
-                sed -ri $p $f
-            fi
-        done
+    for file in $FILES; do
+        if [ -e "$file" ]; then
+            compat_sed_i "s/%%version%%/$version/g;
+                          s/%%short-version%%/${short_version}/g;
+                          s/%%name%%/${NAME}/g;
+                          s/%%author%%/${AUTHOR}/g;
+                          s/%%email%%/${EMAIL}/g;
+                          s/%%author-email%%/${AUTHOR_EMAIL}/g;
+                          s/%%description%%/${DESCRIPTION}/g" \
+                      "$file"
+        fi
     done
 
+    echo "Version updated to $version."
 }
 
-
 ##
-## ChangeLog generation
+## LOAD CONFIG
 ##
 
-if type -t gitchangelog > /dev/null 2>&1 ; then
-    GITCHANGELOG_CONFIG_FILENAME="./.gitchangelog.rc" gitchangelog > ChangeLog
-    if [ "$?" != 0 ]; then
-        print_error "Error while generating ChangeLog."
-    fi
-    echo "ChangeLog generated."
+if [ -e .package ]; then
+    . ./.package
 else
-    echo "No changelog generated (gitchangelog not found)"
+    echo "'./package' file is missing."
+    exit 1
 fi
 
+## list of files where %%version*%% macros are to be replaced:
+[ -z "$FILES" ] && FILES="setup.cfg setup.py CHANGELOG.rst"
+
+[ -z "$NAME" ] && die "No \$NAME was defined in './package'."
+
+
 ##
-## Set version information
+## CHECK DEPS
 ##
 
-set_meta_tags
+depends git grep
+
+## BSD / GNU sed compatibility layer
+if get_path sed >/dev/null; then
+    if sed --version >/dev/null 2>&1; then  ## GNU
+        compat_sed() { sed -r "$@"; }
+        compat_sed_i() { sed -r -i "$@"; }
+    else                                    ## BSD
+        compat_sed() { sed -E "$@"; }
+        compat_sed_i() { sed -E -i "" "$@"; }
+    fi
+else
+    ## Look for ``gsed``
+    if (get_path gsed && gsed --version) >/dev/null 2>&1; then
+        compat_sed() { gsed -r "$@"; }
+        compat_sed_i() { gsed -r -i "$@"; }
+    else
+        print_error "$exname: required GNU or BSD sed not found"
+    fi
+fi
+
+## BSD / GNU date compatibility layer
+if get_path date >/dev/null; then
+    if date --version >/dev/null 2>&1 ; then  ## GNU
+        compat_date() { date -d "@$1" "$2"; }
+    else                                      ## BSD
+        compat_date() { date -j -f %s "$1" "$2"; }
+    fi
+else
+    if (get_path gdate && gdate --version) >/dev/null 2>&1; then
+        compat_date() { gdate -d "@$1" "$2"; }
+    else
+        print_error "$exname: required GNU or BSD date not found"
+    fi
+fi
+
+if ! "$git" describe --tags >/dev/null 2>&1; then
+    die "Didn't find a git repository (or no tags found). " \
+        "\`\`./autogen.sh\`\` uses git to create changelog and version information."
+fi
+
+
+##
+## CODE
+##
+
+if [ "$1" = "--get-version" ]; then
+    get_current_version
+    exit 0
+fi
+
+if [ "$1" = "--get-name" ]; then
+    echo "$NAME"
+    exit 0
+fi
+
+if get_path gitchangelog >/dev/null; then
+    gitchangelog > CHANGELOG.rst
+    if [ "$?" != 0 ]; then
+        echo "Changelog NOT generated. An error occured while running \`\`gitchangelog\`\`." >&2
+    else
+        echo "Changelog generated."
+    fi
+else
+    echo "Changelog NOT generated because \`\`gitchangelog\`\` could not be found."
+    touch CHANGELOG.rst  ## create it anyway because it's required by setup.py current install
+fi
+
+prepare_files
 if [ "$?" != 0 ]; then
     print_error "Error while updating version information."
 fi
-echo "Version updated to $version."
-
-## End autogen.sh
